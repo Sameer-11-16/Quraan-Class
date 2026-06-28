@@ -174,7 +174,7 @@ export default function ManageStudents({ onClose, addToast }) {
       setParsedStudents([]); // Clear preview
       setBulkText(''); // Clear input textarea
       setShowAiImport(false); // Hide panel
-      if (addToast) addToast(\`Successfully imported \${studentsToInsert.length} students to the database!\`, 'success');
+      if (addToast) addToast('Successfully imported ' + studentsToInsert.length + ' students to the database!', 'success');
     } catch (error) {
       if (addToast) addToast(error.message || 'Failed to bulk import students', 'error');
     } finally {

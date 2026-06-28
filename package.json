@@ -3,14 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
-    "framer-motion": "^12.42.0",
     "html2pdf.js": "^0.14.0",
     "mongoose": "^9.7.3",
     "next": "16.2.9",
