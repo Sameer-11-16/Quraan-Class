@@ -296,41 +296,23 @@ export default function Home() {
         </thead>
         <tbody>
           ${students
-            .map(
-              (s, i) => {
+            .map((s, i) => {
                 const rec = attendance[s.id] || {};
-                return \`
-                <tr>
-                  <td style="padding: 6px 8px; border: 1px solid #E5E7EB;">\${i + 1}</td>
-                  <td style="padding: 6px 8px; border: 1px solid #E5E7EB; color: #047857; font-weight: 500;">\${s.code}</td>
-                  <td style="padding: 6px 8px; border: 1px solid #E5E7EB; font-weight: 500;">\${s.name}</td>
-                  <td style="padding: 6px 8px; border: 1px solid #E5E7EB; text-align: center;">
-                    <span style="padding: 2px 6px; border-radius: 100px; font-size: 10px; font-weight: 600;
-                      \${rec.classAttendance === 'Present' ? 'background: #D1FAE5; color: #065F46;' : ''}
-                      \${rec.classAttendance === 'Absent' ? 'background: #FEE2E2; color: #991B1B;' : ''}
-                      \${rec.classAttendance === 'Late' ? 'background: #FEF3C7; color: #92400E;' : ''}
-                    ">
-                      \${rec.classAttendance || 'Not Marked'}
-                    </span>
-                  </td>
-                  <td style="padding: 6px 8px; border: 1px solid #E5E7EB; text-align: center;">
-                    <span style="padding: 2px 6px; border-radius: 100px; font-size: 10px; font-weight: 600;
-                      \${rec.halqaAttendance === 'Present' ? 'background: #D1FAE5; color: #065F46;' : ''}
-                      \${rec.halqaAttendance === 'Absent' ? 'background: #FEE2E2; color: #991B1B;' : ''}
-                      \${rec.halqaAttendance === 'Late' ? 'background: #FEF3C7; color: #92400E;' : ''}
-                    ">
-                      \${rec.halqaAttendance || 'Not Marked'}
-                    </span>
-                  </td>
-                  <td style="padding: 6px 8px; border: 1px solid #E5E7EB; text-align: center; font-weight: 600; color: \${rec.halqaParticipation === 'Yes' ? '#059669' : '#DC2626'}">\${rec.halqaParticipation || '-'}</td>
-                  <td style="padding: 6px 8px; border: 1px solid #E5E7EB; text-align: center; font-weight: 600; color: \${rec.notesMarks === 'Yes' ? '#059669' : '#DC2626'}">\${rec.notesMarks || '-'}</td>
-                  <td style="padding: 6px 8px; border: 1px solid #E5E7EB; text-align: center; font-weight: 600; color: \${rec.homework === 'Yes' ? '#059669' : '#DC2626'}">\${rec.homework || '-'}</td>
-                  <td style="padding: 6px 8px; border: 1px solid #E5E7EB; text-align: center; font-weight: 600; color: \${rec.followUp === 'Yes' ? '#059669' : '#DC2626'}">\${rec.followUp || '-'}</td>
-                  <td style="padding: 6px 8px; border: 1px solid #E5E7EB; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">\${rec.remark || ''}</td>
-                </tr>
-              \`;
-              }
-            )
+                const caColor = rec.classAttendance === 'Present' ? 'background:#D1FAE5;color:#065F46;' : rec.classAttendance === 'Absent' ? 'background:#FEE2E2;color:#991B1B;' : rec.classAttendance === 'Late' ? 'background:#FEF3C7;color:#92400E;' : '';
+                const haColor = rec.halqaAttendance === 'Present' ? 'background:#D1FAE5;color:#065F46;' : rec.halqaAttendance === 'Absent' ? 'background:#FEE2E2;color:#991B1B;' : rec.halqaAttendance === 'Late' ? 'background:#FEF3C7;color:#92400E;' : '';
+                return '<tr>' +
+                  '<td style="padding:6px 8px;border:1px solid #E5E7EB;">' + (i + 1) + '</td>' +
+                  '<td style="padding:6px 8px;border:1px solid #E5E7EB;color:#047857;font-weight:500;">' + s.code + '</td>' +
+                  '<td style="padding:6px 8px;border:1px solid #E5E7EB;font-weight:500;">' + s.name + '</td>' +
+                  '<td style="padding:6px 8px;border:1px solid #E5E7EB;text-align:center;"><span style="padding:2px 6px;border-radius:100px;font-size:10px;font-weight:600;' + caColor + '">' + (rec.classAttendance || 'Not Marked') + '</span></td>' +
+                  '<td style="padding:6px 8px;border:1px solid #E5E7EB;text-align:center;"><span style="padding:2px 6px;border-radius:100px;font-size:10px;font-weight:600;' + haColor + '">' + (rec.halqaAttendance || 'Not Marked') + '</span></td>' +
+                  '<td style="padding:6px 8px;border:1px solid #E5E7EB;text-align:center;font-weight:600;color:' + (rec.halqaParticipation === 'Yes' ? '#059669' : '#DC2626') + ';">' + (rec.halqaParticipation || '-') + '</td>' +
+                  '<td style="padding:6px 8px;border:1px solid #E5E7EB;text-align:center;font-weight:600;color:' + (rec.notesMarks === 'Yes' ? '#059669' : '#DC2626') + ';">' + (rec.notesMarks || '-') + '</td>' +
+                  '<td style="padding:6px 8px;border:1px solid #E5E7EB;text-align:center;font-weight:600;color:' + (rec.homework === 'Yes' ? '#059669' : '#DC2626') + ';">' + (rec.homework || '-') + '</td>' +
+                  '<td style="padding:6px 8px;border:1px solid #E5E7EB;text-align:center;font-weight:600;color:' + (rec.followUp === 'Yes' ? '#059669' : '#DC2626') + ';">' + (rec.followUp || '-') + '</td>' +
+                  '<td style="padding:6px 8px;border:1px solid #E5E7EB;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (rec.remark || '') + '</td>' +
+                '</tr>';
+              })
             .join('')}
         </tbody>
       </table>
