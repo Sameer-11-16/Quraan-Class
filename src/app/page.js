@@ -13,11 +13,8 @@ import {
   saveAttendance,
   getAttendance,
   getBatches,
-  saveBatches,
-  getStudents,
-  saveStudents,
   getStudentsByBatch,
-} from '@/lib/storage';
+} from '@/lib/api';
 
 export default function Home() {
   // --- State ---
@@ -33,86 +30,65 @@ export default function Home() {
   const [hasExisting, setHasExisting] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const [isManageOpen, setIsManageOpen] = useState(false);
+  const [isLoadingBatches, setIsLoadingBatches] = useState(true);
   const { toasts, addToast, removeToast } = useToast();
 
-  // --- Seed default data & load batches ---
-  useEffect(() => {
-    const existingBatches = getBatches();
-    if (existingBatches.length === 0) {
-      const defaultBatches = [
-        { id: 'batch-a', name: 'Batch A - Beginners' },
-        { id: 'batch-b', name: 'Batch B - Advanced' },
-      ];
-      const defaultStudents = [
-        // Batch A
-        { id: 1, code: 'QS-001', name: 'Ahmad bin Khalid', batch: 'batch-a' },
-        { id: 2, code: 'QS-002', name: 'Fatimah bint Abdullah', batch: 'batch-a' },
-        { id: 3, code: 'QS-003', name: 'Yusuf bin Ibrahim', batch: 'batch-a' },
-        { id: 4, code: 'QS-004', name: 'Aisha bint Omar', batch: 'batch-a' },
-        { id: 5, code: 'QS-005', name: 'Muhammad bin Hassan', batch: 'batch-a' },
-        { id: 6, code: 'QS-006', name: 'Khadijah bint Ali', batch: 'batch-a' },
-        { id: 7, code: 'QS-007', name: 'Omar bin Tariq', batch: 'batch-a' },
-        { id: 8, code: 'QS-008', name: 'Maryam bint Yusuf', batch: 'batch-a' },
-        { id: 9, code: 'QS-009', name: 'Ali bin Zaid', batch: 'batch-a' },
-        { id: 10, code: 'QS-010', name: 'Safiyyah bint Hamza', batch: 'batch-a' },
-        // Batch B
-        { id: 11, code: 'QS-011', name: 'Ibrahim bin Saleh', batch: 'batch-b' },
-        { id: 12, code: 'QS-012', name: 'Zainab bint Rashid', batch: 'batch-b' },
-        { id: 13, code: 'QS-013', name: 'Hamza bin Noor', batch: 'batch-b' },
-        { id: 14, code: 'QS-014', name: 'Hafsa bint Kareem', batch: 'batch-b' },
-        { id: 15, code: 'QS-015', name: 'Bilal bin Mustafa', batch: 'batch-b' },
-        { id: 16, code: 'QS-016', name: 'Ruqayyah bint Fahad', batch: 'batch-b' },
-        { id: 17, code: 'QS-017', name: 'Uthman bin Jamal', batch: 'batch-b' },
-        { id: 18, code: 'QS-018', name: 'Sumaya bint Idris', batch: 'batch-b' },
-        { id: 19, code: 'QS-019', name: 'Khalid bin Waleed', batch: 'batch-b' },
-        { id: 20, code: 'QS-020', name: 'Amina bint Tariq', batch: 'batch-b' },
-      ];
-      saveBatches(defaultBatches);
-      saveStudents(defaultStudents);
-      setBatches(defaultBatches);
-      setSelectedBatch(defaultBatches[0].id);
-    } else {
+  // --- Load batches ---
+  const loadInitialBatches = useCallback(async () => {
+    try {
+      setIsLoadingBatches(true);
+      const existingBatches = await getBatches();
       setBatches(existingBatches);
-      setSelectedBatch(existingBatches[0]?.id || '');
+      if (existingBatches.length > 0) {
+        setSelectedBatch(existingBatches[0].id);
+      }
+    } catch (error) {
+      addToast('Failed to load batches from database', 'error');
+    } finally {
+      setIsLoadingBatches(false);
     }
-  }, []);
+  }, [addToast]);
+
+  useEffect(() => {
+    loadInitialBatches();
+  }, [loadInitialBatches]);
 
   // --- Check if attendance exists for selected date/batch ---
   useEffect(() => {
-    if (selectedDate && selectedBatch) {
-      const existing = getAttendance(selectedDate, selectedBatch);
-      setHasExisting(!!existing);
-    }
+    const checkAttendance = async () => {
+      if (selectedDate && selectedBatch) {
+        try {
+          const existing = await getAttendance(selectedDate, selectedBatch);
+          setHasExisting(!!existing);
+        } catch (error) {
+          console.error("Error checking attendance:", error);
+          setHasExisting(false);
+        }
+      }
+    };
+    checkAttendance();
   }, [selectedDate, selectedBatch]);
 
   // --- Load students ---
-  const loadStudents = useCallback(() => {
+  const loadStudents = useCallback(async () => {
     if (!selectedBatch) {
       addToast('Please select a batch first', 'error');
       return;
     }
+    
+    addToast('Loading students and records...', 'info');
+    
     try {
-      const batchStudents = getStudentsByBatch(selectedBatch);
+      const batchStudents = await getStudentsByBatch(selectedBatch);
       setStudents(batchStudents);
 
-      // Check if attendance already exists in localStorage
-      const existing = getAttendance(selectedDate, selectedBatch);
-      if (existing) {
-        // Normalize records from potential old string format or partial objects
+      // Check if attendance already exists in DB
+      const existing = await getAttendance(selectedDate, selectedBatch);
+      if (existing && existing.records) {
         const normalized = {};
         batchStudents.forEach((s) => {
           const rec = existing.records[s.id];
-          if (typeof rec === 'string') {
-            normalized[s.id] = {
-              classAttendance: rec,
-              halqaAttendance: '',
-              halqaParticipation: '',
-              notesMarks: '',
-              homework: '',
-              followUp: '',
-              remark: '',
-            };
-          } else if (rec) {
+          if (rec) {
             normalized[s.id] = {
               classAttendance: rec.classAttendance || '',
               halqaAttendance: rec.halqaAttendance || '',
@@ -136,7 +112,7 @@ export default function Home() {
         });
         setAttendance(normalized);
         setIsEditable(false);
-        addToast('Loaded saved attendance for this date', 'info');
+        addToast('Loaded saved attendance for this date', 'success');
       } else {
         // Initialize with empty attendance
         const initial = {};
@@ -157,7 +133,7 @@ export default function Home() {
 
       setIsLoaded(true);
     } catch (err) {
-      addToast('Failed to load students', 'error');
+      addToast('Failed to load data from database', 'error');
     }
   }, [selectedDate, selectedBatch, addToast]);
 
@@ -244,27 +220,16 @@ export default function Home() {
       return;
     }
 
-    // Save to localStorage
-    saveAttendance(selectedDate, selectedBatch, attendance);
-
-    // Try optional background API sync
+    addToast('Saving to database...', 'info');
+    
     try {
-      await fetch('/api/attendance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          date: selectedDate,
-          batch: selectedBatch,
-          records: attendance,
-        }),
-      });
+      await saveAttendance(selectedDate, selectedBatch, attendance);
+      setIsEditable(false);
+      setHasExisting(true);
+      addToast('Attendance saved successfully!', 'success');
     } catch (err) {
-      // Ignore API background sync errors
+      addToast(err.message || 'Failed to save attendance', 'error');
     }
-
-    setIsEditable(false);
-    setHasExisting(true);
-    addToast('Attendance saved successfully!', 'success');
   };
 
   const handleReset = () => {
@@ -333,36 +298,36 @@ export default function Home() {
             .map(
               (s, i) => {
                 const rec = attendance[s.id] || {};
-                return `
+                return \`
                 <tr>
-                  <td style="padding: 6px 8px; border: 1px solid #E5E7EB;">${i + 1}</td>
-                  <td style="padding: 6px 8px; border: 1px solid #E5E7EB; color: #047857; font-weight: 500;">${s.code}</td>
-                  <td style="padding: 6px 8px; border: 1px solid #E5E7EB; font-weight: 500;">${s.name}</td>
+                  <td style="padding: 6px 8px; border: 1px solid #E5E7EB;">\${i + 1}</td>
+                  <td style="padding: 6px 8px; border: 1px solid #E5E7EB; color: #047857; font-weight: 500;">\${s.code}</td>
+                  <td style="padding: 6px 8px; border: 1px solid #E5E7EB; font-weight: 500;">\${s.name}</td>
                   <td style="padding: 6px 8px; border: 1px solid #E5E7EB; text-align: center;">
                     <span style="padding: 2px 6px; border-radius: 100px; font-size: 10px; font-weight: 600;
-                      ${rec.classAttendance === 'Present' ? 'background: #D1FAE5; color: #065F46;' : ''}
-                      ${rec.classAttendance === 'Absent' ? 'background: #FEE2E2; color: #991B1B;' : ''}
-                      ${rec.classAttendance === 'Late' ? 'background: #FEF3C7; color: #92400E;' : ''}
+                      \${rec.classAttendance === 'Present' ? 'background: #D1FAE5; color: #065F46;' : ''}
+                      \${rec.classAttendance === 'Absent' ? 'background: #FEE2E2; color: #991B1B;' : ''}
+                      \${rec.classAttendance === 'Late' ? 'background: #FEF3C7; color: #92400E;' : ''}
                     ">
-                      ${rec.classAttendance || 'Not Marked'}
+                      \${rec.classAttendance || 'Not Marked'}
                     </span>
                   </td>
                   <td style="padding: 6px 8px; border: 1px solid #E5E7EB; text-align: center;">
                     <span style="padding: 2px 6px; border-radius: 100px; font-size: 10px; font-weight: 600;
-                      ${rec.halqaAttendance === 'Present' ? 'background: #D1FAE5; color: #065F46;' : ''}
-                      ${rec.halqaAttendance === 'Absent' ? 'background: #FEE2E2; color: #991B1B;' : ''}
-                      ${rec.halqaAttendance === 'Late' ? 'background: #FEF3C7; color: #92400E;' : ''}
+                      \${rec.halqaAttendance === 'Present' ? 'background: #D1FAE5; color: #065F46;' : ''}
+                      \${rec.halqaAttendance === 'Absent' ? 'background: #FEE2E2; color: #991B1B;' : ''}
+                      \${rec.halqaAttendance === 'Late' ? 'background: #FEF3C7; color: #92400E;' : ''}
                     ">
-                      ${rec.halqaAttendance || 'Not Marked'}
+                      \${rec.halqaAttendance || 'Not Marked'}
                     </span>
                   </td>
-                  <td style="padding: 6px 8px; border: 1px solid #E5E7EB; text-align: center; font-weight: 600; color: ${rec.halqaParticipation === 'Yes' ? '#059669' : '#DC2626'}">${rec.halqaParticipation || '-'}</td>
-                  <td style="padding: 6px 8px; border: 1px solid #E5E7EB; text-align: center; font-weight: 600; color: ${rec.notesMarks === 'Yes' ? '#059669' : '#DC2626'}">${rec.notesMarks || '-'}</td>
-                  <td style="padding: 6px 8px; border: 1px solid #E5E7EB; text-align: center; font-weight: 600; color: ${rec.homework === 'Yes' ? '#059669' : '#DC2626'}">${rec.homework || '-'}</td>
-                  <td style="padding: 6px 8px; border: 1px solid #E5E7EB; text-align: center; font-weight: 600; color: ${rec.followUp === 'Yes' ? '#059669' : '#DC2626'}">${rec.followUp || '-'}</td>
-                  <td style="padding: 6px 8px; border: 1px solid #E5E7EB; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${rec.remark || ''}</td>
+                  <td style="padding: 6px 8px; border: 1px solid #E5E7EB; text-align: center; font-weight: 600; color: \${rec.halqaParticipation === 'Yes' ? '#059669' : '#DC2626'}">\${rec.halqaParticipation || '-'}</td>
+                  <td style="padding: 6px 8px; border: 1px solid #E5E7EB; text-align: center; font-weight: 600; color: \${rec.notesMarks === 'Yes' ? '#059669' : '#DC2626'}">\${rec.notesMarks || '-'}</td>
+                  <td style="padding: 6px 8px; border: 1px solid #E5E7EB; text-align: center; font-weight: 600; color: \${rec.homework === 'Yes' ? '#059669' : '#DC2626'}">\${rec.homework || '-'}</td>
+                  <td style="padding: 6px 8px; border: 1px solid #E5E7EB; text-align: center; font-weight: 600; color: \${rec.followUp === 'Yes' ? '#059669' : '#DC2626'}">\${rec.followUp || '-'}</td>
+                  <td style="padding: 6px 8px; border: 1px solid #E5E7EB; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">\${rec.remark || ''}</td>
                 </tr>
-              `;
+              \`;
               }
             )
             .join('')}
@@ -392,43 +357,46 @@ export default function Home() {
     }
   };
 
-  const handleCloseManage = () => {
+  const handleCloseManage = async () => {
     setIsManageOpen(false);
-    // Refresh batches dropdown
-    const currentBatches = getBatches();
-    setBatches(currentBatches);
     
-    // Ensure selected batch still exists, otherwise select the first one
-    if (selectedBatch && !currentBatches.some(b => b.id === selectedBatch)) {
-      const fallback = currentBatches[0]?.id || '';
-      setSelectedBatch(fallback);
-      setIsLoaded(false);
-    } else if (!selectedBatch && currentBatches.length > 0) {
-      // If we had no batches and just added one, auto-select it
-      setSelectedBatch(currentBatches[0].id);
-    } else if (isLoaded) {
-      // Reload active student list to reflect any edits/additions
-      const batchStudents = getStudentsByBatch(selectedBatch);
-      setStudents(batchStudents);
+    // Refresh batches dropdown from DB
+    try {
+      const currentBatches = await getBatches();
+      setBatches(currentBatches);
       
-      // Update attendance map keys for any new/removed students
-      setAttendance(prev => {
-        const next = { ...prev };
-        batchStudents.forEach(s => {
-          if (!next[s.id]) {
-            next[s.id] = {
-              classAttendance: '',
-              halqaAttendance: '',
-              halqaParticipation: '',
-              notesMarks: '',
-              homework: '',
-              followUp: '',
-              remark: '',
-            };
-          }
+      if (selectedBatch && !currentBatches.some(b => b.id === selectedBatch)) {
+        const fallback = currentBatches[0]?.id || '';
+        setSelectedBatch(fallback);
+        setIsLoaded(false);
+      } else if (!selectedBatch && currentBatches.length > 0) {
+        setSelectedBatch(currentBatches[0].id);
+      } else if (isLoaded) {
+        // Reload active student list to reflect any edits/additions
+        const batchStudents = await getStudentsByBatch(selectedBatch);
+        setStudents(batchStudents);
+        
+        // Update attendance map keys for any new/removed students
+        setAttendance(prev => {
+          const next = { ...prev };
+          batchStudents.forEach(s => {
+            if (!next[s.id]) {
+              next[s.id] = {
+                classAttendance: '',
+                halqaAttendance: '',
+                halqaParticipation: '',
+                notesMarks: '',
+                homework: '',
+                followUp: '',
+                remark: '',
+              };
+            }
+          });
+          return next;
         });
-        return next;
-      });
+      }
+    } catch (error) {
+      addToast('Failed to refresh data after closing settings', 'error');
     }
   };
 
@@ -436,23 +404,27 @@ export default function Home() {
     <>
       <Header />
       <main className="main-container">
-        <DateBatchSelector
-          selectedDate={selectedDate}
-          setSelectedDate={setSelectedDate}
-          selectedBatch={selectedBatch}
-          setSelectedBatch={setSelectedBatch}
-          batches={batches}
-          onLoad={loadStudents}
-          hasExisting={hasExisting}
-          isLoaded={isLoaded}
-          onBack={() => {
-            setIsLoaded(false);
-            setSearchQuery('');
-          }}
-          onManage={() => setIsManageOpen(true)}
-        />
+        {isLoadingBatches ? (
+           <div style={{ textAlign: 'center', padding: '40px' }}>Loading...</div>
+        ) : (
+          <DateBatchSelector
+            selectedDate={selectedDate}
+            setSelectedDate={setSelectedDate}
+            selectedBatch={selectedBatch}
+            setSelectedBatch={setSelectedBatch}
+            batches={batches}
+            onLoad={loadStudents}
+            hasExisting={hasExisting}
+            isLoaded={isLoaded}
+            onBack={() => {
+              setIsLoaded(false);
+              setSearchQuery('');
+            }}
+            onManage={() => setIsManageOpen(true)}
+          />
+        )}
 
-        {isLoaded && (
+        {isLoaded && !isLoadingBatches && (
           <>
             {!isEditable && (
               <div className="edit-mode-banner">
@@ -496,7 +468,7 @@ export default function Home() {
           </>
         )}
 
-        {!isLoaded && (
+        {!isLoaded && !isLoadingBatches && (
           <div className="card" style={{ marginTop: '20px' }}>
             <div className="empty-state">
               <div className="empty-state-icon">🕌</div>

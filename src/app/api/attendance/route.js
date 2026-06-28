@@ -1,24 +1,31 @@
 import { NextResponse } from 'next/server';
-
-// In-memory store for server-side (complements client-side localStorage)
-const attendanceStore = new Map();
+import dbConnect from '@/lib/mongodb';
+import Attendance from '@/lib/models/Attendance';
 
 export async function GET(request) {
-  const { searchParams } = new URL(request.url);
-  const date = searchParams.get('date');
-  const batch = searchParams.get('batch');
+  try {
+    const { searchParams } = new URL(request.url);
+    const date = searchParams.get('date');
+    const batch = searchParams.get('batch');
 
-  if (!date || !batch) {
-    return NextResponse.json(
-      { error: 'Date and batch are required' },
-      { status: 400 }
-    );
+    if (!date || !batch) {
+      return NextResponse.json({ success: false, error: 'Missing date or batch query parameters' }, { status: 400 });
+    }
+
+    await dbConnect();
+    
+    const attendance = await Attendance.findOne({ date, batch });
+    
+    if (attendance) {
+      // Convert Map to plain object for frontend
+      const recordsObj = Object.fromEntries(attendance.records);
+      return NextResponse.json({ success: true, data: { date: attendance.date, batch: attendance.batch.toString(), records: recordsObj } });
+    } else {
+      return NextResponse.json({ success: true, data: null });
+    }
+  } catch (error) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
-
-  const key = `${date}_${batch}`;
-  const data = attendanceStore.get(key);
-
-  return NextResponse.json({ attendance: data || null });
 }
 
 export async function POST(request) {
@@ -27,25 +34,20 @@ export async function POST(request) {
     const { date, batch, records } = body;
 
     if (!date || !batch || !records) {
-      return NextResponse.json(
-        { error: 'Date, batch, and records are required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Missing date, batch, or records in request body' }, { status: 400 });
     }
 
-    const key = `${date}_${batch}`;
-    attendanceStore.set(key, {
-      date,
-      batch,
-      records,
-      savedAt: new Date().toISOString(),
-    });
+    await dbConnect();
 
-    return NextResponse.json({ success: true, message: 'Attendance saved successfully' });
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Failed to save attendance' },
-      { status: 500 }
+    // Use findOneAndUpdate with upsert: true to either update existing or create new
+    const updated = await Attendance.findOneAndUpdate(
+      { date, batch },
+      { $set: { records } },
+      { new: true, upsert: true }
     );
+
+    return NextResponse.json({ success: true, data: updated });
+  } catch (error) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

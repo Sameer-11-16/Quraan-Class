@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   getBatches,
   addBatch,
@@ -8,7 +8,8 @@ import {
   getStudents,
   addStudent,
   deleteStudent,
-} from '@/lib/storage';
+  addStudentsBulk,
+} from '@/lib/api';
 
 export default function ManageStudents({ onClose, addToast }) {
   const [batches, setBatches] = useState([]);
@@ -18,6 +19,7 @@ export default function ManageStudents({ onClose, addToast }) {
   const [newStudentCode, setNewStudentCode] = useState('');
   const [selectedBatchForAdd, setSelectedBatchForAdd] = useState('');
   const [activeTab, setActiveTab] = useState('students');
+  const [isLoading, setIsLoading] = useState(false);
 
   // --- AI Bulk Import State ---
   const [showAiImport, setShowAiImport] = useState(false);
@@ -26,40 +28,83 @@ export default function ManageStudents({ onClose, addToast }) {
   const [parsedStudents, setParsedStudents] = useState([]);
   const [isParsing, setIsParsing] = useState(false);
 
+  const loadData = useCallback(async () => {
+    try {
+      const [fetchedBatches, fetchedStudents] = await Promise.all([
+        getBatches(),
+        getStudents(),
+      ]);
+      setBatches(fetchedBatches);
+      setStudents(fetchedStudents);
+    } catch (error) {
+      if (addToast) addToast('Failed to load data from database', 'error');
+    }
+  }, [addToast]);
+
   useEffect(() => {
-    setBatches(getBatches());
-    setStudents(getStudents());
-  }, []);
+    loadData();
+  }, [loadData]);
 
-  const handleAddBatch = () => {
+  const handleAddBatch = async () => {
     if (!newBatchName.trim()) return;
-    const batch = addBatch(newBatchName.trim());
-    setBatches((prev) => [...prev, batch]);
-    setNewBatchName('');
-    if (addToast) addToast(`Batch "${batch.name}" added successfully!`, 'success');
+    setIsLoading(true);
+    try {
+      const batch = await addBatch(newBatchName.trim());
+      setBatches((prev) => [...prev, batch]);
+      setNewBatchName('');
+      if (addToast) addToast(`Batch "${batch.name}" added successfully!`, 'success');
+    } catch (error) {
+      if (addToast) addToast(error.message || 'Failed to add batch', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleDeleteBatch = (batchId) => {
-    if (!confirm('Are you sure? This will remove the batch. Students in this batch will remain but will have no batch assigned.')) return;
-    deleteBatch(batchId);
-    setBatches((prev) => prev.filter((b) => b.id !== batchId));
-    if (addToast) addToast('Batch deleted.', 'info');
+  const handleDeleteBatch = async (batchId) => {
+    if (!confirm('Are you sure? This will permanently remove the batch from the database.')) return;
+    setIsLoading(true);
+    try {
+      await deleteBatch(batchId);
+      setBatches((prev) => prev.filter((b) => b.id !== batchId));
+      if (addToast) addToast('Batch deleted.', 'info');
+    } catch (error) {
+      if (addToast) addToast(error.message || 'Failed to delete batch', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleAddStudent = () => {
-    if (!newStudentName.trim() || !newStudentCode.trim() || !selectedBatchForAdd) return;
-    const student = addStudent(newStudentName.trim(), newStudentCode.trim(), selectedBatchForAdd);
-    setStudents((prev) => [...prev, student]);
-    setNewStudentName('');
-    setNewStudentCode('');
-    if (addToast) addToast(`Student "${student.name}" added successfully!`, 'success');
+  const handleAddStudent = async () => {
+    if (!newStudentName.trim() || !newStudentCode.trim() || !selectedBatchForAdd) {
+      if (addToast) addToast('Please fill all student fields', 'error');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const student = await addStudent(newStudentName.trim(), newStudentCode.trim(), selectedBatchForAdd);
+      setStudents((prev) => [...prev, student]);
+      setNewStudentName('');
+      setNewStudentCode('');
+      if (addToast) addToast(`Student "${student.name}" added successfully!`, 'success');
+    } catch (error) {
+      if (addToast) addToast(error.message || 'Failed to add student', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleDeleteStudent = (studentId) => {
-    if (!confirm('Are you sure you want to delete this student?')) return;
-    deleteStudent(studentId);
-    setStudents((prev) => prev.filter((s) => s.id !== studentId));
-    if (addToast) addToast('Student deleted.', 'info');
+  const handleDeleteStudent = async (studentId) => {
+    if (!confirm('Are you sure you want to permanently delete this student?')) return;
+    setIsLoading(true);
+    try {
+      await deleteStudent(studentId);
+      setStudents((prev) => prev.filter((s) => s.id !== studentId));
+      if (addToast) addToast('Student deleted.', 'info');
+    } catch (error) {
+      if (addToast) addToast(error.message || 'Failed to delete student', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // --- Groq Parsing Handlers ---
@@ -104,26 +149,37 @@ export default function ManageStudents({ onClose, addToast }) {
     );
   };
 
-  const handleImportParsed = () => {
+  const handleImportParsed = async () => {
     const activeToImport = parsedStudents.filter(s => s.checked);
     if (activeToImport.length === 0) {
       alert('No students selected for import.');
       return;
     }
 
-    let addedCount = 0;
-    activeToImport.forEach((student) => {
-      // If code is empty or missing, generate a serial code
-      const studentCode = student.code?.trim() || `QS-${Math.floor(100 + Math.random() * 900)}`;
-      addStudent(student.name.trim(), studentCode, bulkImportBatch);
-      addedCount++;
-    });
+    setIsLoading(true);
+    try {
+      // Prepare array for bulk insert
+      const studentsToInsert = activeToImport.map(student => ({
+        name: student.name.trim(),
+        code: student.code?.trim() || \`QS-\${Math.floor(100 + Math.random() * 900)}\`,
+        batchId: bulkImportBatch
+      }));
 
-    setStudents(getStudents()); // Refresh student list
-    setParsedStudents([]); // Clear preview
-    setBulkText(''); // Clear input textarea
-    setShowAiImport(false); // Hide panel
-    if (addToast) addToast(`Successfully imported ${addedCount} students!`, 'success');
+      await addStudentsBulk(studentsToInsert);
+      
+      // Refresh student list from server
+      const updatedStudents = await getStudents();
+      setStudents(updatedStudents);
+      
+      setParsedStudents([]); // Clear preview
+      setBulkText(''); // Clear input textarea
+      setShowAiImport(false); // Hide panel
+      if (addToast) addToast(\`Successfully imported \${studentsToInsert.length} students to the database!\`, 'success');
+    } catch (error) {
+      if (addToast) addToast(error.message || 'Failed to bulk import students', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -146,6 +202,7 @@ export default function ManageStudents({ onClose, addToast }) {
           <button
             className="btn btn-secondary btn-sm"
             onClick={onClose}
+            disabled={isLoading}
             style={{ borderRadius: '50%', width: '32px', height: '32px', padding: 0 }}
           >
             ✕
@@ -212,10 +269,11 @@ export default function ManageStudents({ onClose, addToast }) {
                   value={newBatchName}
                   onChange={(e) => setNewBatchName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddBatch()}
+                  disabled={isLoading}
                   style={{ flex: 1, fontSize: '0.9rem' }}
                 />
-                <button className="btn btn-primary" onClick={handleAddBatch}>
-                  ➕ Add Batch
+                <button className="btn btn-primary" onClick={handleAddBatch} disabled={isLoading}>
+                  {isLoading ? '⏳' : '➕ Add Batch'}
                 </button>
               </div>
 
@@ -257,6 +315,7 @@ export default function ManageStudents({ onClose, addToast }) {
                       <button
                         className="btn btn-danger btn-sm"
                         onClick={() => handleDeleteBatch(batch.id)}
+                        disabled={isLoading}
                         style={{ padding: '4px 12px', fontSize: '0.75rem' }}
                       >
                         🗑️ Delete
@@ -277,6 +336,7 @@ export default function ManageStudents({ onClose, addToast }) {
                 <button
                   className="btn btn-gold btn-sm"
                   onClick={() => setShowAiImport(!showAiImport)}
+                  disabled={isLoading}
                   style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
                   ⚡ {showAiImport ? 'Hide AI Import' : 'AI Bulk Import (Groq)'}
@@ -302,6 +362,7 @@ export default function ManageStudents({ onClose, addToast }) {
                       className="form-select"
                       value={bulkImportBatch}
                       onChange={(e) => setBulkImportBatch(e.target.value)}
+                      disabled={isLoading || isParsing}
                       style={{ border: '2px solid var(--gold-300)' }}
                     >
                       <option value="">Select Batch...</option>
@@ -319,6 +380,7 @@ export default function ManageStudents({ onClose, addToast }) {
                       placeholder="Example:&#10;1. QS-021 Ahmad Raza&#10;2. QS-022 Fatimah Zahra&#10;Or paste CSV, WhatsApp message, or lists..."
                       value={bulkText}
                       onChange={(e) => setBulkText(e.target.value)}
+                      disabled={isLoading || isParsing}
                       style={{
                         width: '100%',
                         fontFamily: 'monospace',
@@ -336,13 +398,14 @@ export default function ManageStudents({ onClose, addToast }) {
                         setShowAiImport(false);
                         setParsedStudents([]);
                       }}
+                      disabled={isLoading || isParsing}
                     >
                       Cancel
                     </button>
                     <button
                       className="btn btn-gold btn-sm"
                       onClick={handleParseText}
-                      disabled={isParsing}
+                      disabled={isLoading || isParsing}
                     >
                       {isParsing ? '⏳ Parsing with AI...' : '✨ Parse with AI'}
                     </button>
@@ -371,6 +434,7 @@ export default function ManageStudents({ onClose, addToast }) {
                                     type="checkbox"
                                     checked={student.checked}
                                     onChange={() => handleToggleParsedCheck(student.id)}
+                                    disabled={isLoading}
                                     style={{ cursor: 'pointer' }}
                                   />
                                 </td>
@@ -384,6 +448,7 @@ export default function ManageStudents({ onClose, addToast }) {
                                         prev.map(s => (s.id === student.id ? { ...s, code: val } : s))
                                       );
                                     }}
+                                    disabled={isLoading}
                                     style={{
                                       border: '1px solid var(--gray-300)',
                                       padding: '2px 6px',
@@ -404,6 +469,7 @@ export default function ManageStudents({ onClose, addToast }) {
                                         prev.map(s => (s.id === student.id ? { ...s, name: val } : s))
                                       );
                                     }}
+                                    disabled={isLoading}
                                     style={{
                                       border: '1px solid var(--gray-300)',
                                       padding: '2px 6px',
@@ -419,8 +485,8 @@ export default function ManageStudents({ onClose, addToast }) {
                         </table>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                        <button className="btn btn-primary btn-sm" onClick={handleImportParsed}>
-                          🚀 Confirm &amp; Import Students
+                        <button className="btn btn-primary btn-sm" onClick={handleImportParsed} disabled={isLoading}>
+                          {isLoading ? '⏳ Importing...' : '🚀 Confirm & Import Students'}
                         </button>
                       </div>
                     </div>
@@ -446,6 +512,7 @@ export default function ManageStudents({ onClose, addToast }) {
                     placeholder="Student Code (e.g. QS-021)"
                     value={newStudentCode}
                     onChange={(e) => setNewStudentCode(e.target.value)}
+                    disabled={isLoading}
                     style={{ flex: '0 0 150px', fontSize: '0.9rem' }}
                   />
                   <input
@@ -454,12 +521,14 @@ export default function ManageStudents({ onClose, addToast }) {
                     placeholder="Full Name"
                     value={newStudentName}
                     onChange={(e) => setNewStudentName(e.target.value)}
+                    disabled={isLoading}
                     style={{ flex: 1, fontSize: '0.9rem', minWidth: '160px' }}
                   />
                   <select
                     className="form-select"
                     value={selectedBatchForAdd}
                     onChange={(e) => setSelectedBatchForAdd(e.target.value)}
+                    disabled={isLoading}
                     style={{ flex: '0 0 200px', fontSize: '0.9rem' }}
                   >
                     <option value="">Select Batch...</option>
@@ -467,8 +536,8 @@ export default function ManageStudents({ onClose, addToast }) {
                       <option key={b.id} value={b.id}>{b.name}</option>
                     ))}
                   </select>
-                  <button className="btn btn-primary" onClick={handleAddStudent}>
-                    ➕ Add Student
+                  <button className="btn btn-primary" onClick={handleAddStudent} disabled={isLoading}>
+                    {isLoading ? '⏳' : '➕ Add Student'}
                   </button>
                 </div>
               )}
@@ -546,17 +615,19 @@ export default function ManageStudents({ onClose, addToast }) {
                           </div>
                           <button
                             onClick={() => handleDeleteStudent(student.id)}
+                            disabled={isLoading}
                             style={{
                               background: 'none',
                               border: 'none',
-                              cursor: 'pointer',
+                              cursor: isLoading ? 'not-allowed' : 'pointer',
                               color: 'var(--gray-400)',
                               fontSize: '1rem',
                               padding: '4px',
                               transition: 'color 150ms ease',
+                              opacity: isLoading ? 0.5 : 1
                             }}
-                            onMouseEnter={(e) => e.target.style.color = '#DC2626'}
-                            onMouseLeave={(e) => e.target.style.color = 'var(--gray-400)'}
+                            onMouseEnter={(e) => !isLoading && (e.target.style.color = '#DC2626')}
+                            onMouseLeave={(e) => !isLoading && (e.target.style.color = 'var(--gray-400)')}
                             title="Delete student"
                           >
                             🗑️
