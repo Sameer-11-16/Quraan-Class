@@ -403,6 +403,9 @@ export default function Home() {
       const fallback = currentBatches[0]?.id || '';
       setSelectedBatch(fallback);
       setIsLoaded(false);
+    } else if (!selectedBatch && currentBatches.length > 0) {
+      // If we had no batches and just added one, auto-select it
+      setSelectedBatch(currentBatches[0].id);
     } else if (isLoaded) {
       // Reload active student list to reflect any edits/additions
       const batchStudents = getStudentsByBatch(selectedBatch);
