@@ -15,6 +15,7 @@ import {
   getBatches,
   getStudentsByBatch,
 } from '@/lib/api';
+import AuthWrapper from '@/components/AuthWrapper';
 
 export default function Home() {
   // --- State ---
@@ -401,7 +402,7 @@ export default function Home() {
   };
 
   return (
-    <>
+    <AuthWrapper>
       <Header />
       <main className="main-container">
         {isLoadingBatches ? (
@@ -511,6 +512,6 @@ export default function Home() {
       {isManageOpen && (
         <ManageStudents onClose={handleCloseManage} addToast={addToast} />
       )}
-    </>
+    </AuthWrapper>
   );
 }
