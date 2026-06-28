@@ -14,12 +14,33 @@ export async function GET(request) {
 
     await dbConnect();
     
-    const attendance = await Attendance.findOne({ date, batch });
+    const attendance = await Attendance.findOne({ date, batch }).lean();
     
     if (attendance) {
-      // Convert Map to plain object for frontend
-      const recordsObj = Object.fromEntries(attendance.records);
-      return NextResponse.json({ success: true, data: { date: attendance.date, batch: attendance.batch.toString(), records: recordsObj } });
+      // Properly convert Map (stored as plain object in .lean()) to safe plain object
+      const rawRecords = attendance.records || {};
+      const recordsObj = {};
+      
+      Object.entries(rawRecords).forEach(([studentId, rec]) => {
+        recordsObj[studentId] = {
+          classAttendance: rec?.classAttendance || '',
+          halqaAttendance: rec?.halqaAttendance || '',
+          halqaParticipation: rec?.halqaParticipation || '',
+          notesMarks: rec?.notesMarks || '',
+          homework: rec?.homework || '',
+          followUp: rec?.followUp || '',
+          remark: rec?.remark || '',
+        };
+      });
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          date: attendance.date,
+          batch: attendance.batch.toString(),
+          records: recordsObj,
+        },
+      });
     } else {
       return NextResponse.json({ success: true, data: null });
     }
@@ -43,10 +64,10 @@ export async function POST(request) {
     const updated = await Attendance.findOneAndUpdate(
       { date, batch },
       { $set: { records } },
-      { new: true, upsert: true }
+      { new: true, upsert: true, lean: true }
     );
 
-    return NextResponse.json({ success: true, data: updated });
+    return NextResponse.json({ success: true, data: { date: updated.date, batch: updated.batch.toString() } });
   } catch (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
