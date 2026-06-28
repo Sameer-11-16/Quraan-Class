@@ -161,7 +161,7 @@ export default function ManageStudents({ onClose, addToast }) {
       // Prepare array for bulk insert
       const studentsToInsert = activeToImport.map(student => ({
         name: student.name.trim(),
-        code: student.code?.trim() || \`QS-\${Math.floor(100 + Math.random() * 900)}\`,
+        code: student.code?.trim() || ('QS-' + Math.floor(100 + Math.random() * 900)),
         batchId: bulkImportBatch
       }));
 
