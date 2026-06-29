@@ -9,6 +9,7 @@ import AttendanceTable from '@/components/AttendanceTable';
 import ActionButtons from '@/components/ActionButtons';
 import Toast, { useToast } from '@/components/Toast';
 import ManageStudents from '@/components/ManageStudents';
+import AttendanceHistory from '@/components/AttendanceHistory';
 import {
   saveAttendance,
   getAttendance,
@@ -31,6 +32,7 @@ export default function Home() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasExisting, setHasExisting] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [isManageOpen, setIsManageOpen] = useState(false);
   const [isLoadingBatches, setIsLoadingBatches] = useState(true);
   const { toasts, addToast, removeToast } = useToast();
@@ -386,7 +388,7 @@ export default function Home() {
 
   return (
     <AuthWrapper>
-      <Header />
+      <Header onHistory={() => setShowHistoryModal(true)} />
       <main className="main-container">
         {isLoadingBatches ? (
            <div style={{ textAlign: 'center', padding: '40px' }}>Loading...</div>
@@ -494,6 +496,20 @@ export default function Home() {
       {/* Manage Students/Batches Modal */}
       {isManageOpen && (
         <ManageStudents onClose={handleCloseManage} addToast={addToast} />
+      )}
+
+      {/* Attendance History Modal */}
+      {showHistoryModal && (
+        <AttendanceHistory
+          onClose={() => setShowHistoryModal(false)}
+          onJumpToDate={(date, batchId) => {
+            setSelectedDate(date);
+            setSelectedBatch(batchId);
+            setIsLoaded(false);
+            setShowHistoryModal(false);
+            addToast(`Switched to ${date} — click Load Students to view`, 'info');
+          }}
+        />
       )}
 
       <InstallPrompt />

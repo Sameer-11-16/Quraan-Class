@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Attendance from '@/lib/models/Attendance';
+import Batch from '@/lib/models/Batch';
 
 export async function GET(request) {
   try {
@@ -8,12 +9,40 @@ export async function GET(request) {
     const date = searchParams.get('date');
     const batch = searchParams.get('batch');
 
+    await dbConnect();
+
+    // If parameters are missing, return all attendance history
+    if (!date && !batch) {
+      const allRecords = await Attendance.find({}).sort({ date: -1 }).populate('batch', 'name');
+      const historyList = allRecords.map(rec => {
+        const rawRecords = rec.records || new Map();
+        const recordsObj = rawRecords instanceof Map ? Object.fromEntries(rawRecords) : (rawRecords || {});
+        let total = 0;
+        let present = 0;
+        let absent = 0;
+        Object.values(recordsObj).forEach((studentRec) => {
+          total++;
+          if (studentRec?.classAttendance === 'Present') present++;
+          if (studentRec?.classAttendance === 'Absent') absent++;
+        });
+
+        return {
+          id: rec._id.toString(),
+          date: rec.date,
+          batchId: rec.batch?._id?.toString() || '',
+          batchName: rec.batch?.name || 'Unknown Batch',
+          totalStudents: total,
+          classPresentCount: present,
+          classAbsentCount: absent,
+        };
+      });
+      return NextResponse.json({ success: true, data: historyList });
+    }
+
     if (!date || !batch) {
       return NextResponse.json({ success: false, error: 'Missing date or batch query parameters' }, { status: 400 });
     }
 
-    await dbConnect();
-    
     const attendance = await Attendance.findOne({ date, batch }).lean();
     
     if (attendance) {
