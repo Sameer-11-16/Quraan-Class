@@ -16,6 +16,7 @@ import {
   getStudentsByBatch,
 } from '@/lib/api';
 import AuthWrapper from '@/components/AuthWrapper';
+import InstallPrompt from '@/components/InstallPrompt';
 
 export default function Home() {
   // --- State ---
@@ -494,6 +495,8 @@ export default function Home() {
       {isManageOpen && (
         <ManageStudents onClose={handleCloseManage} addToast={addToast} />
       )}
+
+      <InstallPrompt />
     </AuthWrapper>
   );
 }

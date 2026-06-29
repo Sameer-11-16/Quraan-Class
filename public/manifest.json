@@ -1,0 +1,16 @@
+{
+  "name": "Quraan Class Attendance",
+  "short_name": "Quraan Class",
+  "description": "Comprehensive session record and attendance management system for Quraan classes",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#022C22",
+  "theme_color": "#047857",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}
