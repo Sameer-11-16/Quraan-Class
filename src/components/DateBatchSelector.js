@@ -12,6 +12,21 @@ export default function DateBatchSelector({
   onBack,
   onManage,
 }) {
+  const activeBatch = batches.find((b) => b.id === selectedBatch);
+  let isDayAllowed = true;
+  let selectedDayName = '';
+
+  if (selectedDate && activeBatch) {
+    const parts = selectedDate.split('-');
+    if (parts.length === 3) {
+      const dateObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      selectedDayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+      if (activeBatch.days && activeBatch.days.length > 0) {
+        isDayAllowed = activeBatch.days.includes(selectedDayName);
+      }
+    }
+  }
+
   return (
     <div className="selector-section">
       <div className="card">
@@ -30,7 +45,7 @@ export default function DateBatchSelector({
         </div>
         <div className="selector-grid">
           <div className="form-group">
-            <label className="form-label" htmlFor="date-picker">Date</label>
+            <label className="form-label" htmlFor="date-picker">Date ({selectedDayName || 'Select Date'})</label>
             <input
               id="date-picker"
               type="date"
@@ -76,12 +91,35 @@ export default function DateBatchSelector({
               id="load-attendance-btn"
               className="btn btn-primary"
               onClick={onLoad}
-              disabled={batches.length === 0 || !selectedBatch}
+              disabled={batches.length === 0 || !selectedBatch || !isDayAllowed}
             >
               {isLoaded ? '🔄 Reload' : '📋 Load Students'}
             </button>
           </div>
         </div>
+
+        {/* Day restriction banner */}
+        {!isDayAllowed && activeBatch && activeBatch.days && activeBatch.days.length > 0 && (
+          <div style={{
+            marginTop: '16px',
+            padding: '12px 16px',
+            background: '#FEE2E2',
+            border: '1.5px solid #F87171',
+            borderRadius: 'var(--radius-md)',
+            color: '#991B1B',
+            fontSize: '0.88rem',
+            fontWeight: 500,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            animation: 'slideDown 0.3s ease'
+          }}>
+            <span style={{ fontSize: '1.3rem' }}>⛔</span>
+            <div>
+              <strong>Attendance Restricted:</strong> Batch <strong>{activeBatch.name}</strong> is scheduled only on <u>{activeBatch.days.join(', ')}</u>. Selected date ({selectedDate}) is a <strong>{selectedDayName}</strong>.
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
