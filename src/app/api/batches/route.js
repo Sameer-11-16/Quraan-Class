@@ -10,6 +10,7 @@ export async function GET() {
     const formattedBatches = batches.map((b) => ({
       id: b._id.toString(),
       name: b.name,
+      days: b.days || [],
     }));
     return NextResponse.json({ success: true, data: formattedBatches });
   } catch (error) {
@@ -19,15 +20,15 @@ export async function GET() {
 
 export async function POST(request) {
   try {
-    const { name } = await request.json();
+    const { name, days } = await request.json();
     if (!name) {
       return NextResponse.json({ success: false, error: 'Batch name is required' }, { status: 400 });
     }
     await dbConnect();
-    const batch = await Batch.create({ name });
+    const batch = await Batch.create({ name, days: days || [] });
     return NextResponse.json({
       success: true,
-      data: { id: batch._id.toString(), name: batch.name },
+      data: { id: batch._id.toString(), name: batch.name, days: batch.days || [] },
     }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

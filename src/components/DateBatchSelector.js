@@ -54,7 +54,7 @@ export default function DateBatchSelector({
             >
               {batches.map((batch) => (
                 <option key={batch.id} value={batch.id}>
-                  {batch.name}
+                  {batch.name}{batch.days && batch.days.length > 0 ? ` (${batch.days.join(', ')})` : ''}
                 </option>
               ))}
               {batches.length === 0 && (

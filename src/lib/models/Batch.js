@@ -7,6 +7,12 @@ const BatchSchema = new mongoose.Schema(
       required: [true, 'Please provide a name for the batch'],
       trim: true,
     },
+    days: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
   },
   { timestamps: true }
 );

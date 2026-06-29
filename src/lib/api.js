@@ -49,11 +49,11 @@ export async function getBatches() {
   return json.data;
 }
 
-export async function addBatch(name) {
+export async function addBatch(name, days = []) {
   const res = await fetch('/api/batches', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, days }),
   });
   if (!res.ok) throw new Error('Failed to add batch');
   const json = await res.json();

@@ -15,11 +15,20 @@ export default function ManageStudents({ onClose, addToast }) {
   const [batches, setBatches] = useState([]);
   const [students, setStudents] = useState([]);
   const [newBatchName, setNewBatchName] = useState('');
+  const [selectedBatchDays, setSelectedBatchDays] = useState([]);
   const [newStudentName, setNewStudentName] = useState('');
   const [newStudentCode, setNewStudentCode] = useState('');
   const [selectedBatchForAdd, setSelectedBatchForAdd] = useState('');
   const [activeTab, setActiveTab] = useState('students');
   const [isLoading, setIsLoading] = useState(false);
+
+  const WEEK_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+  const toggleDaySelection = (day) => {
+    setSelectedBatchDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+    );
+  };
 
   // --- AI Bulk Import State ---
   const [showAiImport, setShowAiImport] = useState(false);
@@ -49,9 +58,10 @@ export default function ManageStudents({ onClose, addToast }) {
     if (!newBatchName.trim()) return;
     setIsLoading(true);
     try {
-      const batch = await addBatch(newBatchName.trim());
+      const batch = await addBatch(newBatchName.trim(), selectedBatchDays);
       setBatches((prev) => [...prev, batch]);
       setNewBatchName('');
+      setSelectedBatchDays([]);
       if (addToast) addToast(`Batch "${batch.name}" added successfully!`, 'success');
     } catch (error) {
       if (addToast) addToast(error.message || 'Failed to add batch', 'error');
@@ -259,26 +269,61 @@ export default function ManageStudents({ onClose, addToast }) {
               {/* Add Batch Form */}
               <div style={{
                 display: 'flex',
-                gap: '10px',
+                flexDirection: 'column',
+                gap: '12px',
                 marginBottom: '20px',
                 padding: '16px',
                 background: 'var(--green-50)',
                 borderRadius: 'var(--radius-md)',
                 border: '1px solid var(--green-200)',
               }}>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="Batch Name (e.g. Batch C - Intermediate)"
-                  value={newBatchName}
-                  onChange={(e) => setNewBatchName(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddBatch()}
-                  disabled={isLoading}
-                  style={{ flex: 1, fontSize: '0.9rem' }}
-                />
-                <button className="btn btn-primary" onClick={handleAddBatch} disabled={isLoading}>
-                  {isLoading ? '⏳' : '➕ Add Batch'}
-                </button>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Batch Name (e.g. YP05 or Batch C)"
+                    value={newBatchName}
+                    onChange={(e) => setNewBatchName(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddBatch()}
+                    disabled={isLoading}
+                    style={{ flex: 1, fontSize: '0.9rem' }}
+                  />
+                  <button className="btn btn-primary" onClick={handleAddBatch} disabled={isLoading}>
+                    {isLoading ? '⏳' : '➕ Add Batch'}
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--green-800)', textTransform: 'uppercase' }}>
+                    🗓️ Schedule Days (Optional):
+                  </span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {WEEK_DAYS.map((day) => {
+                      const isSel = selectedBatchDays.includes(day);
+                      return (
+                        <button
+                          key={day}
+                          type="button"
+                          onClick={() => toggleDaySelection(day)}
+                          disabled={isLoading}
+                          style={{
+                            padding: '4px 10px',
+                            fontSize: '0.78rem',
+                            fontWeight: 600,
+                            borderRadius: '100px',
+                            border: `1.5px solid ${isSel ? '#059669' : 'var(--gray-300)'}`,
+                            background: isSel ? '#059669' : 'var(--white)',
+                            color: isSel ? 'var(--white)' : 'var(--gray-600)',
+                            cursor: 'pointer',
+                            transition: 'all 150ms ease',
+                          }}
+                        >
+                          {day}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
 
               {/* Batch List */}
@@ -303,10 +348,22 @@ export default function ManageStudents({ onClose, addToast }) {
                         transition: 'all 150ms ease',
                       }}
                     >
-                      <div>
+                      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
                         <span style={{ fontWeight: 600, color: 'var(--green-800)' }}>{batch.name}</span>
+                        {batch.days && batch.days.length > 0 && (
+                          <span style={{
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            color: '#065F46',
+                            background: '#D1FAE5',
+                            padding: '2px 8px',
+                            borderRadius: '100px',
+                            border: '1px solid #A7F3D0',
+                          }}>
+                            🗓️ {batch.days.join(', ')}
+                          </span>
+                        )}
                         <span style={{
-                          marginLeft: '10px',
                           fontSize: '0.75rem',
                           color: 'var(--gray-400)',
                           background: 'var(--gray-100)',
@@ -371,7 +428,9 @@ export default function ManageStudents({ onClose, addToast }) {
                     >
                       <option value="">Select Batch...</option>
                       {batches.map((b) => (
-                        <option key={b.id} value={b.id}>{b.name}</option>
+                        <option key={b.id} value={b.id}>
+                          {b.name}{b.days && b.days.length > 0 ? ` (${b.days.join(', ')})` : ''}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -537,7 +596,9 @@ export default function ManageStudents({ onClose, addToast }) {
                   >
                     <option value="">Select Batch...</option>
                     {batches.map((b) => (
-                      <option key={b.id} value={b.id}>{b.name}</option>
+                      <option key={b.id} value={b.id}>
+                        {b.name}{b.days && b.days.length > 0 ? ` (${b.days.join(', ')})` : ''}
+                      </option>
                     ))}
                   </select>
                   <button className="btn btn-primary" onClick={handleAddStudent} disabled={isLoading}>
@@ -578,9 +639,23 @@ export default function ManageStudents({ onClose, addToast }) {
                       marginBottom: '8px',
                       display: 'flex',
                       alignItems: 'center',
+                      flexWrap: 'wrap',
                       gap: '8px',
                     }}>
                       📦 {batch.name}
+                      {batch.days && batch.days.length > 0 && (
+                        <span style={{
+                          fontSize: '0.7rem',
+                          background: '#D1FAE5',
+                          color: '#065F46',
+                          padding: '2px 8px',
+                          borderRadius: '100px',
+                          fontWeight: 600,
+                          border: '1px solid #A7F3D0',
+                        }}>
+                          🗓️ {batch.days.join(', ')}
+                        </span>
+                      )}
                       <span style={{
                         fontSize: '0.7rem',
                         background: 'var(--green-100)',
