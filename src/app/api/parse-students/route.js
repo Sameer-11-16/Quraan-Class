@@ -37,8 +37,9 @@ Each object must have exactly two fields: "code" and "name".
 
 Guidelines:
 - Clean up the names (capitalize correctly, remove bullet points, commas, numbers, brackets, etc.).
-- Locate or extract student codes if present (e.g. "QS-021", "101", "Code: 22" -> extract as code).
-- If no code is present for a student, auto-generate a code starting from "QS-XXX" or based on existing code patterns in the text, or leave it empty so the user can fill it.
+- Locate or extract student codes if present (e.g. "QS-021", "101", "Code: 22" -> extract as code). Format codes cleanly with leading zeros for proper serial sorting (e.g. "QS-001", "QS-002").
+- If no code is present for a student, auto-generate sequential codes starting from "QS-001" or based on existing code patterns in the text (e.g. QS-001, QS-002, QS-003...).
+- Maintain proper numerical and serial number order.
 - Do not output any notes, comments, or explanations outside the JSON. Return only the JSON object.
 
 Example output format:
@@ -69,10 +70,16 @@ Example output format:
 
     const data = await response.json();
     const parsedContent = JSON.parse(data.choices[0].message.content);
+    let studentList = parsedContent.students || [];
+
+    // Sort naturally by student code (serial number order)
+    studentList.sort((a, b) =>
+      (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' })
+    );
 
     return NextResponse.json({
       success: true,
-      students: parsedContent.students || []
+      students: studentList
     });
   } catch (error) {
     console.error('Error parsing students with Groq:', error);

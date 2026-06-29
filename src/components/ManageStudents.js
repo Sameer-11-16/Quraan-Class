@@ -130,12 +130,16 @@ export default function ManageStudents({ onClose, addToast }) {
       if (!res.ok) {
         throw new Error(data.error || 'Failed to parse text.');
       }
-      setParsedStudents((data.students || []).map((s, idx) => ({
+      const parsedList = (data.students || []).map((s, idx) => ({
         ...s,
         id: Date.now() + idx,
         checked: true
-      })));
-      if (addToast) addToast(`Successfully parsed ${data.students?.length || 0} students!`, 'success');
+      }));
+      parsedList.sort((a, b) =>
+        (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' })
+      );
+      setParsedStudents(parsedList);
+      if (addToast) addToast(`Successfully parsed ${parsedList.length} students!`, 'success');
     } catch (err) {
       if (addToast) addToast(err.message || 'An error occurred during parsing.', 'error');
     } finally {
@@ -559,6 +563,9 @@ export default function ManageStudents({ onClose, addToast }) {
               {/* Student List grouped by batch */}
               {batches.map((batch) => {
                 const batchStudents = students.filter((s) => s.batch === batch.id);
+                batchStudents.sort((a, b) =>
+                  (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' })
+                );
                 if (batchStudents.length === 0) return null;
                 return (
                   <div key={batch.id} style={{ marginBottom: '20px' }}>

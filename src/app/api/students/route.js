@@ -22,6 +22,10 @@ export async function GET(request) {
       code: s.code,
       batch: s.batch.toString(),
     }));
+    // Sort naturally by student code (serial number order)
+    formattedStudents.sort((a, b) =>
+      (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' })
+    );
     return NextResponse.json({ success: true, data: formattedStudents });
   } catch (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
