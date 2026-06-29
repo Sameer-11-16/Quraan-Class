@@ -1,7 +1,5 @@
 'use client';
 
-import { useState } from 'react';
-
 export default function AttendanceTable({
   students,
   attendance,
@@ -9,8 +7,6 @@ export default function AttendanceTable({
   onMarkAllPresent,
   isEditable,
 }) {
-  const [viewMode, setViewMode] = useState('card');
-
   if (!students || students.length === 0) {
     return (
       <div className="table-section">
@@ -80,69 +76,24 @@ export default function AttendanceTable({
 
   return (
     <div className="table-section">
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div className="table-header" style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', borderBottom: '1px solid var(--gray-100)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+      {/* Desktop view (Full table layout) */}
+      <div className="desktop-view">
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div className="table-header" style={{ padding: '16px 20px 0' }}>
             <div className="card-title" style={{ marginBottom: 0 }}>
               <span>📝</span>
               Attendance Sheet
             </div>
-            
-            {/* View Switcher Toggle */}
-            <div style={{ display: 'flex', background: 'var(--gray-100)', padding: '3px', borderRadius: '8px', border: '1px solid var(--gray-200)' }}>
+            {isEditable && (
               <button
-                type="button"
-                className="btn btn-sm"
-                onClick={() => setViewMode('table')}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  fontSize: '0.8rem',
-                  fontWeight: 600,
-                  border: 'none',
-                  background: viewMode === 'table' ? 'var(--green-600)' : 'transparent',
-                  color: viewMode === 'table' ? 'var(--white)' : 'var(--gray-600)',
-                  boxShadow: viewMode === 'table' ? 'var(--shadow-sm)' : 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                }}
+                id="mark-all-present-btn"
+                className="btn btn-sm btn-primary"
+                onClick={onMarkAllPresent}
               >
-                📋 Table View
+                ✅ Mark All Present
               </button>
-              <button
-                type="button"
-                className="btn btn-sm"
-                onClick={() => setViewMode('card')}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  fontSize: '0.8rem',
-                  fontWeight: 600,
-                  border: 'none',
-                  background: viewMode === 'card' ? 'var(--green-600)' : 'transparent',
-                  color: viewMode === 'card' ? 'var(--white)' : 'var(--gray-600)',
-                  boxShadow: viewMode === 'card' ? 'var(--shadow-sm)' : 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                🎴 Card View
-              </button>
-            </div>
+            )}
           </div>
-
-          {isEditable && (
-            <button
-              id="mark-all-present-btn"
-              className="btn btn-sm btn-primary"
-              onClick={onMarkAllPresent}
-            >
-              ✅ Mark All Present
-            </button>
-          )}
-        </div>
-
-        {viewMode === 'table' ? (
           <div className="table-container" style={{ border: 'none', borderRadius: 0, overflowX: 'auto' }}>
             <table className="attendance-table" style={{ width: '100%', minWidth: '1000px' }}>
               <thead>
@@ -295,181 +246,134 @@ export default function AttendanceTable({
               </tbody>
             </table>
           </div>
-        ) : (
-          <div className="attendance-cards-grid" style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-            gap: '20px',
-            padding: '20px',
-            background: 'var(--gray-50)',
-          }}>
-            {students.map((student, index) => {
-              const record = attendance[student.id] || {
-                classAttendance: '',
-                halqaAttendance: '',
-                halqaParticipation: '',
-                notesMarks: '',
-                homework: '',
-                followUp: '',
-                remark: '',
-              };
+        </div>
+      </div>
 
-              return (
-                <div
-                  key={student.id}
-                  className="student-attendance-card"
-                  style={{
-                    background: 'var(--white)',
-                    borderRadius: '12px',
-                    border: '1px solid var(--gray-200)',
-                    boxShadow: 'var(--shadow-md)',
-                    padding: '16px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '14px',
-                    transition: 'all 200ms ease',
-                    position: 'relative',
-                  }}
-                >
-                  {/* Card Header */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--gray-100)', paddingBottom: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span style={{
-                        background: 'var(--green-50)',
-                        color: 'var(--green-800)',
-                        fontWeight: '700',
-                        borderRadius: '50%',
-                        width: '28px',
-                        height: '28px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '0.85rem',
-                        border: '1px solid var(--green-200)'
-                      }}>{index + 1}</span>
-                      <div>
-                        <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: 'var(--gray-800)' }}>{student.name}</h4>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--green-700)', fontWeight: 500, fontFamily: 'monospace' }}>{student.code}</span>
-                      </div>
+      {/* Mobile view (Pill-button and cards layout) */}
+      <div className="mobile-view">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', padding: '0 4px' }}>
+          <div className="card-title" style={{ marginBottom: 0 }}>
+            <span>📝</span>
+            Attendance List
+          </div>
+          {isEditable && (
+            <button
+              id="mark-all-present-btn-mobile"
+              className="btn btn-sm btn-primary"
+              onClick={onMarkAllPresent}
+            >
+              ✅ Mark All Present
+            </button>
+          )}
+        </div>
+        <div className="mobile-student-list">
+          {students.map((student, index) => {
+            const record = attendance[student.id] || {
+              classAttendance: '',
+              halqaAttendance: '',
+              halqaParticipation: '',
+              notesMarks: '',
+              homework: '',
+              followUp: '',
+              remark: '',
+            };
+
+            return (
+              <div className="mobile-student-card" key={student.id}>
+                {/* Header info */}
+                <div className="mobile-card-header">
+                  <div className="student-info">
+                    <span className="serial-badge">#{index + 1}</span>
+                    <span className="student-name">{student.name}</span>
+                  </div>
+                  <div className="student-meta">
+                    <span className="student-code">{student.code}</span>
+                  </div>
+                </div>
+
+                {/* Card controls */}
+                <div className="mobile-card-body">
+                  {/* Class Attendance */}
+                  <div className="mobile-control-row">
+                    <label>Class Attendance</label>
+                    <div className="segmented-control">
+                      <button
+                        type="button"
+                        className={`segmented-btn present ${record.classAttendance === 'Present' ? 'active' : ''}`}
+                        disabled={!isEditable}
+                        onClick={() => onRecordChange(student.id, 'classAttendance', record.classAttendance === 'Present' ? '' : 'Present')}
+                      >
+                        ✓ Present
+                      </button>
+                      <button
+                        type="button"
+                        className={`segmented-btn absent ${record.classAttendance === 'Absent' ? 'active' : ''}`}
+                        disabled={!isEditable}
+                        onClick={() => onRecordChange(student.id, 'classAttendance', record.classAttendance === 'Absent' ? '' : 'Absent')}
+                      >
+                        ✕ Absent
+                      </button>
+                      <button
+                        type="button"
+                        className={`segmented-btn late ${record.classAttendance === 'Late' ? 'active' : ''}`}
+                        disabled={!isEditable}
+                        onClick={() => onRecordChange(student.id, 'classAttendance', record.classAttendance === 'Late' ? '' : 'Late')}
+                      >
+                        ⏱ Late
+                      </button>
                     </div>
                   </div>
 
-                  {/* Attendance Actions */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {/* Class Attendance */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--gray-600)' }}>Class Att.</span>
-                      <div className="status-group" style={{ display: 'flex', gap: '6px' }}>
-                        <button
-                          type="button"
-                          disabled={!isEditable}
-                          onClick={() => onRecordChange(student.id, 'classAttendance', record.classAttendance === 'Present' ? '' : 'Present')}
-                          className={`status-btn present ${record.classAttendance === 'Present' ? 'active' : ''}`}
-                        >
-                          ✓ Present
-                        </button>
-                        <button
-                          type="button"
-                          disabled={!isEditable}
-                          onClick={() => onRecordChange(student.id, 'classAttendance', record.classAttendance === 'Absent' ? '' : 'Absent')}
-                          className={`status-btn absent ${record.classAttendance === 'Absent' ? 'active' : ''}`}
-                        >
-                          ✕ Absent
-                        </button>
-                        <button
-                          type="button"
-                          disabled={!isEditable}
-                          onClick={() => onRecordChange(student.id, 'classAttendance', record.classAttendance === 'Late' ? '' : 'Late')}
-                          className={`status-btn late ${record.classAttendance === 'Late' ? 'active' : ''}`}
-                        >
-                          ⏱ Late
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Halqa Attendance */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--gray-600)' }}>Halqa Att.</span>
-                      <div className="status-group" style={{ display: 'flex', gap: '6px' }}>
-                        <button
-                          type="button"
-                          disabled={!isEditable}
-                          onClick={() => onRecordChange(student.id, 'halqaAttendance', record.halqaAttendance === 'Present' ? '' : 'Present')}
-                          className={`status-btn present ${record.halqaAttendance === 'Present' ? 'active' : ''}`}
-                        >
-                          ✓ Present
-                        </button>
-                        <button
-                          type="button"
-                          disabled={!isEditable}
-                          onClick={() => onRecordChange(student.id, 'halqaAttendance', record.halqaAttendance === 'Absent' ? '' : 'Absent')}
-                          className={`status-btn absent ${record.halqaAttendance === 'Absent' ? 'active' : ''}`}
-                        >
-                          ✕ Absent
-                        </button>
-                        <button
-                          type="button"
-                          disabled={!isEditable}
-                          onClick={() => onRecordChange(student.id, 'halqaAttendance', record.halqaAttendance === 'Late' ? '' : 'Late')}
-                          className={`status-btn late ${record.halqaAttendance === 'Late' ? 'active' : ''}`}
-                        >
-                          ⏱ Late
-                        </button>
-                      </div>
+                  {/* Halqa Attendance */}
+                  <div className="mobile-control-row">
+                    <label>Halqa Attendance</label>
+                    <div className="segmented-control">
+                      <button
+                        type="button"
+                        className={`segmented-btn present ${record.halqaAttendance === 'Present' ? 'active' : ''}`}
+                        disabled={!isEditable}
+                        onClick={() => onRecordChange(student.id, 'halqaAttendance', record.halqaAttendance === 'Present' ? '' : 'Present')}
+                      >
+                        ✓ Present
+                      </button>
+                      <button
+                        type="button"
+                        className={`segmented-btn absent ${record.halqaAttendance === 'Absent' ? 'active' : ''}`}
+                        disabled={!isEditable}
+                        onClick={() => onRecordChange(student.id, 'halqaAttendance', record.halqaAttendance === 'Absent' ? '' : 'Absent')}
+                      >
+                        ✕ Absent
+                      </button>
+                      <button
+                        type="button"
+                        className={`segmented-btn late ${record.halqaAttendance === 'Late' ? 'active' : ''}`}
+                        disabled={!isEditable}
+                        onClick={() => onRecordChange(student.id, 'halqaAttendance', record.halqaAttendance === 'Late' ? '' : 'Late')}
+                      >
+                        ⏱ Late
+                      </button>
                     </div>
                   </div>
 
-                  {/* Yes/No Options Grid */}
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: '10px 14px',
-                    background: 'var(--gray-50)',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--gray-200)'
-                  }}>
+                  {/* 2x2 Toggles Grid for Yes/No fields */}
+                  <div className="mobile-toggles-grid">
                     {/* Halqa Participation */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-500)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Participation</span>
-                      <div style={{ display: 'flex', gap: '4px' }}>
+                    <div className="mobile-toggle-item">
+                      <span>💬 Halqa Part.</span>
+                      <div className="yes-no-control">
                         <button
                           type="button"
+                          className={`yes-no-btn yes ${record.halqaParticipation === 'Yes' ? 'active' : ''}`}
                           disabled={!isEditable}
                           onClick={() => onRecordChange(student.id, 'halqaParticipation', record.halqaParticipation === 'Yes' ? '' : 'Yes')}
-                          style={{
-                            flex: 1,
-                            padding: '5px 0',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            border: '1.5px solid var(--gray-200)',
-                            borderRadius: '6px',
-                            background: record.halqaParticipation === 'Yes' ? '#D1FAE5' : 'var(--white)',
-                            color: record.halqaParticipation === 'Yes' ? '#065F46' : 'var(--gray-500)',
-                            borderColor: record.halqaParticipation === 'Yes' ? '#34D399' : 'var(--gray-200)',
-                            cursor: isEditable ? 'pointer' : 'default',
-                            transition: 'all 150ms ease'
-                          }}
                         >
                           Yes
                         </button>
                         <button
                           type="button"
+                          className={`yes-no-btn no ${record.halqaParticipation === 'No' ? 'active' : ''}`}
                           disabled={!isEditable}
                           onClick={() => onRecordChange(student.id, 'halqaParticipation', record.halqaParticipation === 'No' ? '' : 'No')}
-                          style={{
-                            flex: 1,
-                            padding: '5px 0',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            border: '1.5px solid var(--gray-200)',
-                            borderRadius: '6px',
-                            background: record.halqaParticipation === 'No' ? '#FEE2E2' : 'var(--white)',
-                            color: record.halqaParticipation === 'No' ? '#991B1B' : 'var(--gray-500)',
-                            borderColor: record.halqaParticipation === 'No' ? '#F87171' : 'var(--gray-200)',
-                            cursor: isEditable ? 'pointer' : 'default',
-                            transition: 'all 150ms ease'
-                          }}
                         >
                           No
                         </button>
@@ -477,46 +381,22 @@ export default function AttendanceTable({
                     </div>
 
                     {/* Notes Marks */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-500)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Notes Marks</span>
-                      <div style={{ display: 'flex', gap: '4px' }}>
+                    <div className="mobile-toggle-item">
+                      <span>📝 Notes Marks</span>
+                      <div className="yes-no-control">
                         <button
                           type="button"
+                          className={`yes-no-btn yes ${record.notesMarks === 'Yes' ? 'active' : ''}`}
                           disabled={!isEditable}
                           onClick={() => onRecordChange(student.id, 'notesMarks', record.notesMarks === 'Yes' ? '' : 'Yes')}
-                          style={{
-                            flex: 1,
-                            padding: '5px 0',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            border: '1.5px solid var(--gray-200)',
-                            borderRadius: '6px',
-                            background: record.notesMarks === 'Yes' ? '#D1FAE5' : 'var(--white)',
-                            color: record.notesMarks === 'Yes' ? '#065F46' : 'var(--gray-500)',
-                            borderColor: record.notesMarks === 'Yes' ? '#34D399' : 'var(--gray-200)',
-                            cursor: isEditable ? 'pointer' : 'default',
-                            transition: 'all 150ms ease'
-                          }}
                         >
                           Yes
                         </button>
                         <button
                           type="button"
+                          className={`yes-no-btn no ${record.notesMarks === 'No' ? 'active' : ''}`}
                           disabled={!isEditable}
                           onClick={() => onRecordChange(student.id, 'notesMarks', record.notesMarks === 'No' ? '' : 'No')}
-                          style={{
-                            flex: 1,
-                            padding: '5px 0',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            border: '1.5px solid var(--gray-200)',
-                            borderRadius: '6px',
-                            background: record.notesMarks === 'No' ? '#FEE2E2' : 'var(--white)',
-                            color: record.notesMarks === 'No' ? '#991B1B' : 'var(--gray-500)',
-                            borderColor: record.notesMarks === 'No' ? '#F87171' : 'var(--gray-200)',
-                            cursor: isEditable ? 'pointer' : 'default',
-                            transition: 'all 150ms ease'
-                          }}
                         >
                           No
                         </button>
@@ -524,46 +404,22 @@ export default function AttendanceTable({
                     </div>
 
                     {/* Homework */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-500)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Homework</span>
-                      <div style={{ display: 'flex', gap: '4px' }}>
+                    <div className="mobile-toggle-item">
+                      <span>🏠 Homework</span>
+                      <div className="yes-no-control">
                         <button
                           type="button"
+                          className={`yes-no-btn yes ${record.homework === 'Yes' ? 'active' : ''}`}
                           disabled={!isEditable}
                           onClick={() => onRecordChange(student.id, 'homework', record.homework === 'Yes' ? '' : 'Yes')}
-                          style={{
-                            flex: 1,
-                            padding: '5px 0',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            border: '1.5px solid var(--gray-200)',
-                            borderRadius: '6px',
-                            background: record.homework === 'Yes' ? '#D1FAE5' : 'var(--white)',
-                            color: record.homework === 'Yes' ? '#065F46' : 'var(--gray-500)',
-                            borderColor: record.homework === 'Yes' ? '#34D399' : 'var(--gray-200)',
-                            cursor: isEditable ? 'pointer' : 'default',
-                            transition: 'all 150ms ease'
-                          }}
                         >
                           Yes
                         </button>
                         <button
                           type="button"
+                          className={`yes-no-btn no ${record.homework === 'No' ? 'active' : ''}`}
                           disabled={!isEditable}
                           onClick={() => onRecordChange(student.id, 'homework', record.homework === 'No' ? '' : 'No')}
-                          style={{
-                            flex: 1,
-                            padding: '5px 0',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            border: '1.5px solid var(--gray-200)',
-                            borderRadius: '6px',
-                            background: record.homework === 'No' ? '#FEE2E2' : 'var(--white)',
-                            color: record.homework === 'No' ? '#991B1B' : 'var(--gray-500)',
-                            borderColor: record.homework === 'No' ? '#F87171' : 'var(--gray-200)',
-                            cursor: isEditable ? 'pointer' : 'default',
-                            transition: 'all 150ms ease'
-                          }}
                         >
                           No
                         </button>
@@ -571,46 +427,22 @@ export default function AttendanceTable({
                     </div>
 
                     {/* Follow Up */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-500)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Follow Up</span>
-                      <div style={{ display: 'flex', gap: '4px' }}>
+                    <div className="mobile-toggle-item">
+                      <span>📞 Follow Up</span>
+                      <div className="yes-no-control">
                         <button
                           type="button"
+                          className={`yes-no-btn yes ${record.followUp === 'Yes' ? 'active' : ''}`}
                           disabled={!isEditable}
                           onClick={() => onRecordChange(student.id, 'followUp', record.followUp === 'Yes' ? '' : 'Yes')}
-                          style={{
-                            flex: 1,
-                            padding: '5px 0',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            border: '1.5px solid var(--gray-200)',
-                            borderRadius: '6px',
-                            background: record.followUp === 'Yes' ? '#D1FAE5' : 'var(--white)',
-                            color: record.followUp === 'Yes' ? '#065F46' : 'var(--gray-500)',
-                            borderColor: record.followUp === 'Yes' ? '#34D399' : 'var(--gray-200)',
-                            cursor: isEditable ? 'pointer' : 'default',
-                            transition: 'all 150ms ease'
-                          }}
                         >
                           Yes
                         </button>
                         <button
                           type="button"
+                          className={`yes-no-btn no ${record.followUp === 'No' ? 'active' : ''}`}
                           disabled={!isEditable}
                           onClick={() => onRecordChange(student.id, 'followUp', record.followUp === 'No' ? '' : 'No')}
-                          style={{
-                            flex: 1,
-                            padding: '5px 0',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            border: '1.5px solid var(--gray-200)',
-                            borderRadius: '6px',
-                            background: record.followUp === 'No' ? '#FEE2E2' : 'var(--white)',
-                            color: record.followUp === 'No' ? '#991B1B' : 'var(--gray-500)',
-                            borderColor: record.followUp === 'No' ? '#F87171' : 'var(--gray-200)',
-                            cursor: isEditable ? 'pointer' : 'default',
-                            transition: 'all 150ms ease'
-                          }}
                         >
                           No
                         </button>
@@ -618,32 +450,23 @@ export default function AttendanceTable({
                     </div>
                   </div>
 
-                  {/* Remarks Input */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-600)' }}>Remarks</span>
+                  {/* Remarks Row */}
+                  <div className="mobile-remarks-row">
+                    <label>Remarks</label>
                     <input
                       type="text"
+                      className="mobile-remarks-input"
                       placeholder="Write a remark..."
                       value={record.remark || ''}
-                      onChange={(e) => onRecordChange(student.id, 'remark', e.target.value)}
                       disabled={!isEditable}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        fontSize: '0.85rem',
-                        borderRadius: '8px',
-                        border: '2px solid var(--gray-200)',
-                        fontFamily: 'Inter, sans-serif',
-                        outline: 'none',
-                        transition: 'border-color 150ms ease',
-                      }}
+                      onChange={(e) => onRecordChange(student.id, 'remark', e.target.value)}
                     />
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
